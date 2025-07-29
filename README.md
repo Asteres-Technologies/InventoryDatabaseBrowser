@@ -24,6 +24,8 @@ This tool empowers COSMIC members to **upload Excel-based technology lists, perf
 - **Accessible:** Usable with mouse, keyboard, and screen readers.
 - **System based light/dark mode:** Automatically adapts to your system preferences.
 
+![App Screenshot](./assets/screenshot.jpg)
+
 ## Getting Started
 
 1. **Clone or Download this Repository**
