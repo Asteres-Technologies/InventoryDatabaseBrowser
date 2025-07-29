@@ -32,13 +32,15 @@ This tool empowers COSMIC members to **upload Excel-based technology lists, perf
 
     ```sh
     git clone https://github.com/Asteres-Technologies/InventoryDatabaseBrowser.git
-    cd cosmic-technology-db-browser
+    cd InventoryDatabaseBrowser
     ```
 
 2. **Open `index.html` in your browser**
 
     - No build step required.
     - All assets are client-side only.
+    - Just double-click `index.html` or open it in your browser of choice.
+    - You may get a request about associating .html files with your browser; this is normal and safe and happens if you have never opened an HTML file before.
 
 3. **Use the App**
 
