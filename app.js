@@ -8,28 +8,28 @@ let listenersInitialized = false;
 // Sample data for demonstration
 const sampleData = [
     {
-        "Technology Name": "Passive Refueling Module (PRM)",
-        "Tech Producer": "United States Space Force, Northrop Grumman",
-        "Description": "The Passive Refueling Module (PRM) is a satellite refueling nozzle developed by Northrop Grumman and being implemented on satellites by the U.S. Space Force. The PRM includes elements to successfully dock and transfer fuel, as well as a refueling payload that handles fuel transfer.",
-        "Existing Technology": "Yes",
-        "Level One Category": "TX01: Propulsion Systems",
-        "Level Two Category": "TX01.1: Chemical Space Propulsion",
-        "Level Three Category": "TX01.1.9: Storable Propulsion XFR/Refueling",
-        "TRL": "8",
-        "Level One Functional Category": "FX01: Space Operations",
-        "Level Two Functional Category": "FX01.2: On-Orbit Servicing"
+        "Technology Name": "Orbital Assembly Robot",
+        "Tech Producer": "AstroBuild Systems",
+        "Description": "A robotic system designed for in-space assembly of large-scale structures, enabling construction in orbit with precision and reliability.",
+        "Existing Technology": "No",
+        "Level One Category": "Space Manufacturing",
+        "Level Two Category": "In-Space Assembly",
+        "Level Three Category": "Robotic Systems",
+        "TRL": "5",
+        "Level One Functional Category": "Construction",
+        "Level Two Functional Category": "Automated Assembly"
     },
     {
-        "Technology Name": "Space LIDAR for precision RPO",
-        "Tech Producer": "The Aerospace Corporation",
-        "Description": "Advanced LIDAR system designed for precise rendezvous and proximity operations in space environments.",
+        "Technology Name": "Servicing & Refueling Module",
+        "Tech Producer": "OrbitServe Technologies",
+        "Description": "A modular spacecraft designed for servicing satellites, performing repairs, and refueling operations to extend operational lifetimes.",
         "Existing Technology": "Yes",
-        "Level One Category": "TX02: Guidance and Navigation",
-        "Level Two Category": "TX02.1: Sensors and Instruments",
-        "Level Three Category": "TX02.1.3: LIDAR Systems",
-        "TRL": "6",
-        "Level One Functional Category": "FX02: Navigation",
-        "Level Two Functional Category": "FX02.1: Precision Navigation"
+        "Level One Category": "Space Servicing",
+        "Level Two Category": "Maintenance & Refueling",
+        "Level Three Category": "Modular Systems",
+        "TRL": "7",
+        "Level One Functional Category": "Satellite Maintenance",
+        "Level Two Functional Category": "In-Orbit Refueling"
     }
 ];
 
