@@ -65,7 +65,8 @@ The snapshot Excel file should have a sheet named "Inventory" (or the first shee
 ## Roadmap
 
 - **Performance Improvements**: The app lags slightly on large datasets. We'll add pagination and lazy loading to improve performance.
-- **Export Functionality**: Ability to export filtered results to Excel or Json.
+- **Search Enhancements**: Improve search algorithms to better handle synonyms, fuzzy matching, and multi-word queries.
+- **Export Functionality**: Ability to export filtered results to Excel or JSON.
 - **COSMIC Branding**: Update the UI to match COSMIC branding guidelines.
 - **Manual Dark Mode**: Add a toggle for dark mode, as some users prefer it over the system-based light/dark mode.
 - **Annotation and Marking**: Plans to add notes and select technologies for export. This will be used to support COSMIC working and Product Groups.
