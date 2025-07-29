@@ -82,8 +82,8 @@ See `LICENSE` for details. All modifications and redistributions must remain ope
 
 This tool is maintained by and for members of the **COSMIC Consortium**.
 Special thanks to the following contributors for support on this project:
-- **Aimee Hubble** - COSMIC Consortium CME - __The Aerospace Corporation__
-- **Shannon Zirbel** - COSMIC Consortium CME - __The Aerospace Corporation__
+- **Aimee Hubble** - COSMIC Consortium CME - _The Aerospace Corporation_
+- **Shannon Zirbel** - COSMIC Consortium CME - _The Aerospace Corporation_
 - **Hopefully More Soon!** - We welcome contributions from all COSMIC members.
 Feel free to open issues or pull requests for bug fixes and features.
 
