@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Technology Inventory Browser</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="app-header">
+            <h1>Technology Inventory Browser</h1>
+            <p class="app-description">Upload and explore the technology database snapshot with advanced search and filtering</p>
+        </header>
+
+        <!-- File Upload Section -->
+        <section class="upload-section">
+            <div id="uploadArea" class="upload-area">
+                <div class="upload-content">
+                    <div class="upload-icon">📁</div>
+                    <h3>Upload Excel File</h3>
+                    <p>Drag and drop your Excel file here or click to select</p>
+                    <input type="file" id="fileInput" accept=".xlsx,.xls" class="file-input">
+                    <button type="button" class="btn btn--primary">
+						Choose File
+					</button>
+                </div>
+            </div>
+            <div id="uploadStatus" class="upload-status hidden"></div>
+        </section>
+
+        <!-- Search and Filter Controls -->
+        <section id="controlsSection" class="controls-section hidden">
+            <div class="search-controls">
+                <div class="search-box">
+                    <input type="text" id="keywordSearch" class="form-control" placeholder="Search technologies, descriptions, or producers...">
+                </div>
+                <div class="filter-controls">
+                    <select id="levelOneFilter" class="form-control">
+                        <option value="">All Level One Categories</option>
+                    </select>
+                    <select id="levelTwoFilter" class="form-control">
+                        <option value="">All Level Two Categories</option>
+                    </select>
+                    <select id="levelThreeFilter" class="form-control">
+                        <option value="">All Level Three Categories</option>
+                    </select>
+                    <select id="functionalOneFilter" class="form-control">
+                        <option value="">All Functional Categories</option>
+                    </select>
+                    <select id="functionalTwoFilter" class="form-control">
+                        <option value="">All Functional Subcategories</option>
+                    </select>
+                    <select id="trlFilter" class="form-control">
+                        <option value="">All TRL Levels</option>
+                    </select>
+                    <select id="existingTechFilter" class="form-control">
+                        <option value="">All Technologies</option>
+                        <option value="Yes">Existing Technologies</option>
+                        <option value="No">Emerging Technologies</option>
+                    </select>
+                </div>
+                <div class="results-summary">
+                    <span id="resultsCount">0 technologies found</span>
+                    <button id="clearFilters" class="btn btn--secondary btn--sm">Clear All Filters</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Display -->
+        <section id="resultsSection" class="results-section hidden">
+            <div id="loadingSpinner" class="loading-spinner hidden">
+				<div class="spinner"></div>
+				<p>Processing data...</p>
+			</div>
+            <div id="technologyGrid" class="technology-grid"></div>
+            <div id="noResults" class="no-results hidden">
+                <div class="no-results-icon">🔍</div>
+                <h3>No technologies found</h3>
+                <p>Try adjusting your search criteria or filters</p>
+            </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
