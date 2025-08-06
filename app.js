@@ -3,6 +3,14 @@ let technologyData = [];
 let filteredData = [];
 let isDataLoaded = false;
 let listenersInitialized = false;
+let techNotes = {}; // { [techName]: noteString }
+
+// --- Side Viewer element references ---
+const sideViewer = document.getElementById('sideViewer');
+const sideViewerContent = document.getElementById('sideViewerContent');
+const sideViewerCloseBtn = document.getElementById('sideViewerCloseBtn');
+const sideViewerOverlay = document.getElementById('sideViewerOverlay');
+
 
 
 // Sample data for demonstration
@@ -378,9 +386,19 @@ function createTechnologyCard(tech) {
         });
     }
 
+    // Add click event to show side viewer
+    card.addEventListener('click', function() {
+        const content = `
+        <h2>${escapeHtml(tech['Technology Name'] || 'Untitled')}</h2>
+        <div><strong>Producer:</strong> ${escapeHtml(tech['Tech Producer'] || '')}</div>
+        <div><strong>Description:</strong> ${escapeHtml(tech['Description'] || '')}</div>
+        <div><strong>TRL:</strong> ${escapeHtml(tech['TRL'] || '')}</div>`;
+        showSideViewer(content);
+    });
+
+
     return card;
 }
-
 
 function updateResultsCount() {
     const count = filteredData.length;
@@ -431,3 +449,18 @@ function escapeHtml(text) {
     };
     return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
+
+// UI Helpers
+function showSideViewer(htmlContent) {
+    sideViewerContent.innerHTML = htmlContent;
+    sideViewer.classList.remove('hidden');
+    document.body.style.overflow = 'hidden'; // Prevent background scroll
+}
+
+function closeSideViewer() {
+    sideViewer.classList.add('hidden');
+    sideViewerContent.innerHTML = '';
+    document.body.style.overflow = ''; // Restore scroll
+}
+sideViewerCloseBtn.addEventListener('click', closeSideViewer);
+sideViewerOverlay.addEventListener('click', closeSideViewer);
