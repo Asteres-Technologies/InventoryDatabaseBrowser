@@ -13,8 +13,6 @@ const sideViewerContent = document.getElementById('sideViewerContent');
 const sideViewerCloseBtn = document.getElementById('sideViewerCloseBtn');
 const sideViewerOverlay = document.getElementById('sideViewerOverlay');
 
-
-
 // Sample data for demonstration
 const sampleData = [
     {
@@ -53,6 +51,10 @@ const technologyGrid = document.getElementById('technologyGrid');
 const loadingSpinner = document.getElementById('loadingSpinner');
 const noResults = document.getElementById('noResults');
 const resultsCount = document.getElementById('resultsCount');
+const exportResultsBtn = document.getElementById('exportResultsBtn');
+const importResultsBtn = document.getElementById('importResultsBtn');
+const importResultsFile = document.getElementById('importResultsFile');
+
 
 // Filter elements
 const keywordSearch = document.getElementById('keywordSearch');
@@ -64,6 +66,7 @@ const functionalTwoFilter = document.getElementById('functionalTwoFilter');
 const trlFilter = document.getElementById('trlFilter');
 const existingTechFilter = document.getElementById('existingTechFilter');
 const clearFilters = document.getElementById('clearFilters');
+
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
@@ -434,8 +437,6 @@ function createTechnologyCard(tech) {
         }, 0);
     });
 
-
-
     return card;
 }
 
@@ -490,14 +491,20 @@ function escapeHtml(text) {
 }
 
 function exportAllSurveyData() {
-    const result = {};
+    const techNotesExport = {};
+    const techSurveyResponsesExport = {};
+
     technologyData.forEach(tech => {
         const key = tech['Technology Name'];
-        result[key] = {
-        notes: techNotes[key] || "",
-        survey: techSurveyResponses[key] || {}
-        };
+        techNotesExport[key] = techNotes[key] || "";
+        techSurveyResponsesExport[key] = techSurveyResponses[key] || {};
     });
+
+    const result = {
+        techNotes: techNotesExport,
+        techSurveyResponses: techSurveyResponsesExport
+    };
+
     const jsonBlob = new Blob([JSON.stringify(result, null, 2)], {type: "application/json"});
     const url = URL.createObjectURL(jsonBlob);
     const link = document.createElement('a');
@@ -510,6 +517,7 @@ function exportAllSurveyData() {
         link.remove();
     }, 250);
 }
+
 
 function saveTechNotesAndSurvey(tech) {
     const techKey = tech['Technology Name'];
@@ -537,6 +545,42 @@ function saveTechNotesAndSurvey(tech) {
     }
 }
 
+
+function handleImportResultsSelect(e) {
+    console.log("IMPORT handler called"); 
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        try {
+            const parsed = JSON.parse(event.target.result);
+            console.log("Loaded parsed JSON:", parsed); 
+            //Check for expected structure
+            if (!parsed.techNotes || !parsed.techSurveyResponses) {
+                console.error("Invalid import format. Expected 'techNotes' and 'techSurveyResponses' keys.");
+                alert("Invalid import format. Please ensure the file contains 'techNotes' and 'techSurveyResponses'.");
+                return;
+            }
+            // Assign to correct variable!
+            techNotes = parsed.techNotes || {};
+            techSurveyResponses = parsed.techSurveyResponses || {};
+            displayResults();
+        } catch (err) {
+            console.error("Error parsing import JSON", err);
+        }
+    }
+    reader.readAsText(file);
+}
+
+function unescapeEntities(str) {
+  return str
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'");
+}
+
+
 // UI Helpers
 function showSideViewer(htmlContent) {
     sideViewerContent.innerHTML = htmlContent;
@@ -551,55 +595,56 @@ function closeSideViewer() {
 }
 
 function renderTechDetails(tech) {
-  return `
-    <h2>${escapeHtml(tech['Technology Name'] || 'Untitled')}</h2>
-    <div><strong>Producer:</strong> ${escapeHtml(tech['Tech Producer'] || '')}</div>
-    <div><strong>Description:</strong> ${escapeHtml(tech['Description'] || '')}</div>
-    <div><strong>TRL:</strong> ${escapeHtml(tech['TRL'] || '')}</div>
-  `;
+    console.log(tech)
+    return `
+        <h2>${escapeHtml(tech['Technology Name'] || 'Untitled')}</h2>
+        <div><strong>Producer:</strong> ${escapeHtml(tech['Tech Producer'] || '')}</div>
+        <div><strong>Description:</strong> ${escapeHtml(tech['Description'] || '')}</div>
+        <div><strong>TRL:</strong> ${escapeHtml(tech['TRL'] || '')}</div>
+    `;
 }
 
 function renderNotesSection(techKey) {
-  const noteVal = techNotes[techKey] || '';
-  return `
+    const noteVal = techNotes[techKey] || '';
+    return `
     <div class="viewer-section-title" style="margin-top:1.1em;">Notes</div>
     <textarea id="viewerNotesArea" class="viewer-notes-area" placeholder="Your notes about this technology...">${escapeHtml(noteVal)}</textarea>
     <button id="saveNotesBtn" class="btn btn--primary viewer-save-btn" style="margin-top:18px;">Save Notes</button>
-  `;
+    `;
 }
 
 function renderSurveySection(techKey) {
-  const surveyVals = techSurveyResponses[techKey] || {};
-  let html = `<form id="surveyForm">`;
-  Object.entries(surveyConfig).forEach(([group, groupData]) => {
-    html += `
-      <div class="viewer-section viewer-survey-section">
+    console.log("Responses", techSurveyResponses);
+    const surveyVals = techSurveyResponses[techKey] || {};
+    console.log("Rendering survey section for:", techKey, "with values:", surveyVals);
+    let html = `<form id="surveyForm">`;
+    Object.entries(surveyConfig).forEach(([group, groupData]) => {
+        html += `<div class="viewer-section viewer-survey-section">
         <div class="viewer-section-title">${escapeHtml(group)}</div>
-        <div style="font-size:0.98em;color:var(--color-text-secondary); margin-bottom:0.44em;">
-          ${escapeHtml(groupData.intro)}
+        <div style="font-size:0.98em;color:var(--color-text-secondary);margin-bottom:0.44em;">
+            ${escapeHtml(groupData.intro)}
         </div>
-    `;
-    groupData.questions.forEach((q, qIdx) => {
-      const qKey = `${group}::${qIdx}`;
-      const savedVal = (surveyVals && surveyVals[qKey] !== undefined) ? surveyVals[qKey] : '';
-      html += `
-        <div class="survey-group">
-          <span class="survey-question-label">${escapeHtml(q)}</span>
-          <div class="survey-likert">` +
-            Array.from({length: 6}, (_, i) => `
-              <input type="radio" name="${qKey}" id="${qKey}_v${i}" value="${i}" ${(savedVal == i ? 'checked' : '')}>
-              <label for="${qKey}_v${i}">${i}</label>
-            `).join('') +
-          `</div>
-        </div>
-      `;
+        `;
+        groupData.questions.forEach((q, qIdx) => {
+        const qKey = `${group}::${qIdx}`;
+        const savedVal = surveyVals[qKey] ?? '';
+        html += `<div class="survey-group">
+            <span class="survey-question-label">${escapeHtml(q)}</span>
+            <div class="survey-likert">`;
+        for (let i = 0; i < 6; ++i) {
+            html += `<input type="radio" name="${qKey}" id="${qKey}_v${i}" value="${i}" ${(savedVal == i ? 'checked' : '')}>
+                <label for="${qKey}_v${i}">${i}</label>`;
+        }
+        html += `</div></div>`;
+        });
+        html += `</div>`;
     });
-    html += `</div>`;
-  });
-  html += `</form>`;
-  return html;
+    html += `</form>`;
+    return html;
 }
-
 
 sideViewerCloseBtn.addEventListener('click', closeSideViewer);
 sideViewerOverlay.addEventListener('click', closeSideViewer);
+exportResultsBtn.addEventListener('click', exportAllSurveyData);
+importResultsBtn.addEventListener('click', () => importResultsFile.click());
+importResultsFile.addEventListener('change', handleImportResultsSelect);
