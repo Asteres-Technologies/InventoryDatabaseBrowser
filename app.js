@@ -4,6 +4,7 @@ let filteredData = [];
 let isDataLoaded = false;
 let listenersInitialized = false;
 let techNotes = {}; // { [techName]: noteString }
+let techSurveyResponses = {}; // { [techName]: { questionKey: responseValue } }
 let surveyConfig = window.surveyConfig;
 
 // --- Side Viewer element references ---
@@ -387,35 +388,52 @@ function createTechnologyCard(tech) {
 
     // Add click event to show side viewer
     card.addEventListener('click', function() {
-        const techKey = tech['Technology Name']; // or a unique ID if you have one
-        const noteVal = techNotes[techKey] || '';
-        const content = `
-        <h2>${escapeHtml(tech['Technology Name'] || 'Untitled')}</h2>
-        <div><strong>Producer:</strong> ${escapeHtml(tech['Tech Producer'] || '')}</div>
-        <div><strong>Description:</strong> ${escapeHtml(tech['Description'] || '')}</div>
-        <div><strong>TRL:</strong> ${escapeHtml(tech['TRL'] || '')}</div>
-        <div class="viewer-section-title" style="margin-top:1.1em;">Notes</div>
-        <textarea id="viewerNotesArea" class="viewer-notes-area" placeholder="Your notes about this technology...">${escapeHtml(noteVal)}</textarea>
-        <button id="saveNotesBtn" class="btn btn--primary viewer-save-btn" style="margin-top:18px;">Save Notes</button>
+        const techKey = tech['Technology Name'];
+        let content = '';
+        content += renderTechDetails(tech);
+        content += renderNotesSection(techKey);
+        content += renderSurveySection(techKey);
+        // Add action buttons:
+        content += `
+            <button id="saveNotesSurveyBtn" class="btn btn--primary viewer-save-btn" style="margin-top:20px;">Save Notes & Survey</button>
+            <button id="exportSurveyBtn" class="btn btn--outline viewer-export-btn" style="margin-top:12px;">Export All Surveys/Notes</button>
         `;
         showSideViewer(content);
 
-        // Add save event (after DOM is populated)
+        // Attach event listeners:
         setTimeout(() => {
-            const area = document.getElementById('viewerNotesArea');
-            const saveBtn = document.getElementById('saveNotesBtn');
-            if (area && saveBtn) {
-                area.addEventListener('input', function(e) {
-                    techNotes[techKey] = e.target.value;
-                });
-                saveBtn.addEventListener('click', function() {
-                    techNotes[techKey] = area.value;
-                    saveBtn.textContent = 'Saved!';
-                    setTimeout(()=>{ saveBtn.textContent = 'Save Notes'; }, 1200);
-                });
+            // Save button
+            const saveBtn = document.getElementById('saveNotesSurveyBtn');
+            if (saveBtn) {
+            saveBtn.addEventListener('click', function() {
+                saveTechNotesAndSurvey(tech);
+                saveBtn.textContent = 'Saved!';
+                setTimeout(() => { saveBtn.textContent = 'Save Notes & Survey'; }, 1200);
+            });
+            }
+            // Export
+            const exportBtn = document.getElementById('exportSurveyBtn');
+            if (exportBtn) {
+            exportBtn.addEventListener('click', exportAllSurveyData);
+            }
+
+            // Notes: update the in-memory state as you type (for instant recall if you switch cards)
+            const notesArea = document.getElementById('viewerNotesArea');
+            if (notesArea) {
+            notesArea.addEventListener('input', () => {
+                techNotes[techKey] = notesArea.value;
+            });
+            }
+            // Survey: update in-memory as soon as you select any radio
+            const surveyForm = document.getElementById('surveyForm');
+            if (surveyForm) {
+            surveyForm.addEventListener('change', () => {
+                saveTechNotesAndSurvey(tech); // Autosave on any change (optional, or just update in-memory state here)
+            });
             }
         }, 0);
     });
+
 
 
     return card;
@@ -471,6 +489,54 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 
+function exportAllSurveyData() {
+    const result = {};
+    technologyData.forEach(tech => {
+        const key = tech['Technology Name'];
+        result[key] = {
+        notes: techNotes[key] || "",
+        survey: techSurveyResponses[key] || {}
+        };
+    });
+    const jsonBlob = new Blob([JSON.stringify(result, null, 2)], {type: "application/json"});
+    const url = URL.createObjectURL(jsonBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'technology_survey_results.json';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+        URL.revokeObjectURL(url);
+        link.remove();
+    }, 250);
+}
+
+function saveTechNotesAndSurvey(tech) {
+    const techKey = tech['Technology Name'];
+    // Save notes
+    const area = document.getElementById('viewerNotesArea');
+    if (area) techNotes[techKey] = area.value;
+
+    // Save survey answers
+    const surveyForm = document.getElementById('surveyForm');
+    if (surveyForm) {
+        const formEls = surveyForm.elements;
+        let vals = {};
+        for (let el of formEls) {
+        if (el.type === 'radio' && el.checked) {
+            vals[el.name] = el.value;
+        }
+        }
+        techSurveyResponses[techKey] = { ...techSurveyResponses[techKey], ...vals };
+    }
+    // Show success message
+    const saveBtn = document.getElementById('saveNotesBtn');
+    if (saveBtn) {
+        saveBtn.textContent = 'Saved!';
+        setTimeout(() => { saveBtn.textContent = 'Save Notes & Survey'; }, 1200);
+    }
+}
+
 // UI Helpers
 function showSideViewer(htmlContent) {
     sideViewerContent.innerHTML = htmlContent;
@@ -483,5 +549,57 @@ function closeSideViewer() {
     sideViewerContent.innerHTML = '';
     document.body.style.overflow = ''; // Restore scroll
 }
+
+function renderTechDetails(tech) {
+  return `
+    <h2>${escapeHtml(tech['Technology Name'] || 'Untitled')}</h2>
+    <div><strong>Producer:</strong> ${escapeHtml(tech['Tech Producer'] || '')}</div>
+    <div><strong>Description:</strong> ${escapeHtml(tech['Description'] || '')}</div>
+    <div><strong>TRL:</strong> ${escapeHtml(tech['TRL'] || '')}</div>
+  `;
+}
+
+function renderNotesSection(techKey) {
+  const noteVal = techNotes[techKey] || '';
+  return `
+    <div class="viewer-section-title" style="margin-top:1.1em;">Notes</div>
+    <textarea id="viewerNotesArea" class="viewer-notes-area" placeholder="Your notes about this technology...">${escapeHtml(noteVal)}</textarea>
+    <button id="saveNotesBtn" class="btn btn--primary viewer-save-btn" style="margin-top:18px;">Save Notes</button>
+  `;
+}
+
+function renderSurveySection(techKey) {
+  const surveyVals = techSurveyResponses[techKey] || {};
+  let html = `<form id="surveyForm">`;
+  Object.entries(surveyConfig).forEach(([group, groupData]) => {
+    html += `
+      <div class="viewer-section viewer-survey-section">
+        <div class="viewer-section-title">${escapeHtml(group)}</div>
+        <div style="font-size:0.98em;color:var(--color-text-secondary); margin-bottom:0.44em;">
+          ${escapeHtml(groupData.intro)}
+        </div>
+    `;
+    groupData.questions.forEach((q, qIdx) => {
+      const qKey = `${group}::${qIdx}`;
+      const savedVal = (surveyVals && surveyVals[qKey] !== undefined) ? surveyVals[qKey] : '';
+      html += `
+        <div class="survey-group">
+          <span class="survey-question-label">${escapeHtml(q)}</span>
+          <div class="survey-likert">` +
+            Array.from({length: 6}, (_, i) => `
+              <input type="radio" name="${qKey}" id="${qKey}_v${i}" value="${i}" ${(savedVal == i ? 'checked' : '')}>
+              <label for="${qKey}_v${i}">${i}</label>
+            `).join('') +
+          `</div>
+        </div>
+      `;
+    });
+    html += `</div>`;
+  });
+  html += `</form>`;
+  return html;
+}
+
+
 sideViewerCloseBtn.addEventListener('click', closeSideViewer);
 sideViewerOverlay.addEventListener('click', closeSideViewer);
