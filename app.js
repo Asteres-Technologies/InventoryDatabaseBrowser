@@ -4,6 +4,7 @@ let filteredData = [];
 let isDataLoaded = false;
 let listenersInitialized = false;
 let techNotes = {}; // { [techName]: noteString }
+let surveyConfig = window.surveyConfig;
 
 // --- Side Viewer element references ---
 const sideViewer = document.getElementById('sideViewer');
@@ -69,7 +70,17 @@ document.addEventListener('DOMContentLoaded', function() {
     loadSampleData();
 });
 
-
+function loadSampleData() {
+    technologyData = [...sampleData];
+    filteredData = [...technologyData];
+    isDataLoaded = true;
+    
+    showUploadStatus(`Sample data loaded (${sampleData.length} technologies). Upload your own Excel file to replace this data.`, 'success');
+    initializeFilters();
+    displayResults();
+    showSections();
+    showLoading(false); // Fix: Ensure loading spinner is hidden for sample data
+}
 
 function setupEventListeners() {
 	if (listenersInitialized) {
@@ -187,18 +198,6 @@ function processFile(file) {
     };
     
     reader.readAsArrayBuffer(file);
-}
-
-function loadSampleData() {
-    technologyData = [...sampleData];
-    filteredData = [...technologyData];
-    isDataLoaded = true;
-    
-    showUploadStatus(`Sample data loaded (${sampleData.length} technologies). Upload your own Excel file to replace this data.`, 'success');
-    initializeFilters();
-    displayResults();
-    showSections();
-    showLoading(false); // Fix: Ensure loading spinner is hidden for sample data
 }
 
 function showUploadStatus(message, type) {
@@ -388,12 +387,34 @@ function createTechnologyCard(tech) {
 
     // Add click event to show side viewer
     card.addEventListener('click', function() {
+        const techKey = tech['Technology Name']; // or a unique ID if you have one
+        const noteVal = techNotes[techKey] || '';
         const content = `
         <h2>${escapeHtml(tech['Technology Name'] || 'Untitled')}</h2>
         <div><strong>Producer:</strong> ${escapeHtml(tech['Tech Producer'] || '')}</div>
         <div><strong>Description:</strong> ${escapeHtml(tech['Description'] || '')}</div>
-        <div><strong>TRL:</strong> ${escapeHtml(tech['TRL'] || '')}</div>`;
+        <div><strong>TRL:</strong> ${escapeHtml(tech['TRL'] || '')}</div>
+        <div class="viewer-section-title" style="margin-top:1.1em;">Notes</div>
+        <textarea id="viewerNotesArea" class="viewer-notes-area" placeholder="Your notes about this technology...">${escapeHtml(noteVal)}</textarea>
+        <button id="saveNotesBtn" class="btn btn--primary viewer-save-btn" style="margin-top:18px;">Save Notes</button>
+        `;
         showSideViewer(content);
+
+        // Add save event (after DOM is populated)
+        setTimeout(() => {
+            const area = document.getElementById('viewerNotesArea');
+            const saveBtn = document.getElementById('saveNotesBtn');
+            if (area && saveBtn) {
+                area.addEventListener('input', function(e) {
+                    techNotes[techKey] = e.target.value;
+                });
+                saveBtn.addEventListener('click', function() {
+                    techNotes[techKey] = area.value;
+                    saveBtn.textContent = 'Saved!';
+                    setTimeout(()=>{ saveBtn.textContent = 'Save Notes'; }, 1200);
+                });
+            }
+        }, 0);
     });
 
 
