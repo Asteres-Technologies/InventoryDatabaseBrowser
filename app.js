@@ -533,21 +533,29 @@ function saveTechNotesAndSurvey(tech) {
     if (surveyForm) {
         const formEls = surveyForm.elements;
         let vals = {};
+
         for (let el of formEls) {
-            // Save both select/radio styles by name
-            if ((el.type === 'radio' && el.checked) || el.tagName === "SELECT") {
+            if (el.type === 'radio' && el.checked) {
+                vals[el.name] = el.value;
+            }
+            // Multi-select for Operational Environment Flexibility
+            if (el.type === 'checkbox' && el.name === "Operational Environment Flexibility") {
+                if (!vals[el.name]) vals[el.name] = [];
+                if (el.checked) vals[el.name].push(el.value);
+            }
+            if (el.tagName === "SELECT") {
                 vals[el.name] = el.value;
             }
         }
         techSurveyResponses[techKey] = { ...techSurveyResponses[techKey], ...vals };
     }
-    // Same save button success message as before
     const saveBtn = document.getElementById('saveNotesBtn');
     if (saveBtn) {
         saveBtn.textContent = 'Saved!';
         setTimeout(() => { saveBtn.textContent = 'Save Notes & Survey'; }, 1200);
     }
 }
+
 
 
 
@@ -624,43 +632,49 @@ function renderSurveySection(techKey) {
 
     Object.entries(surveyConfig).forEach(([attrKey, attrObj]) => {
         html += `<div class="viewer-section viewer-survey-section">`;
-
-        // Title
+        // ---- TITLE ----
         html += `<div class="viewer-section-title">${escapeHtml(attrKey)}</div>`;
 
-        // Definition & (optionally) scaleDescription, with correct escaping
+        // ---- DEFINITION & SCALEDESCRIPTION ----
         if (attrKey === "Operational Environment Flexibility") {
-            // Show raw HTML for OEF only
+            // Show definition as HTML (not escaped) for OEF
             html += `<div style="font-size:0.98em;color:var(--color-text-secondary);margin-bottom:0.44em;">${attrObj.definition || ''}</div>`;
         } else {
-            // Escape everything else
+            // Show escaped definition, and unescaped HTML scaleDescription if present
             html += `<div style="font-size:0.98em;color:var(--color-text-secondary);margin-bottom:0.44em;">${escapeHtml(attrObj.definition || '')}</div>`;
-            // If a scaleDescription exists, show it as HTML (not escaped)
             if (attrObj.scaleDescription) {
                 html += `<div style="font-size:0.93em;color:var(--color-text-secondary);margin-bottom:0.9em;">${attrObj.scaleDescription}</div>`;
             }
         }
 
-        // Survey Input UI
+        // ---- INPUT UI ----
         if (attrKey === "Operational Environment Flexibility" && attrObj.categories) {
-            // Categorical dropdown
-            const savedVal = surveyVals[attrKey] || "";
+            // MULTI-SELECT CHECKBOXES
+            let checkedVals = [];
+            if (Array.isArray(surveyVals[attrKey])) {
+                checkedVals = surveyVals[attrKey].map(String);
+            } else if (typeof surveyVals[attrKey] === "string" && surveyVals[attrKey]) {
+                checkedVals = surveyVals[attrKey].split(',').map(s => s.trim());
+            }
             html += `<div class="survey-group">
-                        <span class="survey-question-label">Applicable Environment:</span>
-                        <select name="${attrKey}" style="font-size:1em;">
-                            <option value="">Not Graded</option>`;
+                <span class="survey-question-label">Applicable Environments (select all that apply):</span>
+                <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">`;
             attrObj.categories.forEach((cat, idx) => {
-                html += `<option value="${idx+1}" ${savedVal == (idx+1) ? "selected" : ""}>${(idx+1)} - ${escapeHtml(cat)}</option>`;
+                const val = (idx + 1).toString();
+                html += `
+                    <label style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" name="${attrKey}" value="${val}" ${checkedVals.includes(val) ? "checked" : ""}>
+                        <span style="font-size:0.98em;"><b>${val}</b> - ${escapeHtml(cat)}</span>
+                    </label>
+                `;
             });
-            html += `   </select>
-                    </div>`;
+            html += `</div></div>`;
         } else {
-            // Numeric rating scale 0-10, as a row of radio buttons
+            // NUMERIC RATING 0-10 RADIO BUTTONS
             const scale = attrObj.scaleValues || [0,1,2,3,4,5,6,7,8,9,10];
             const savedVal = typeof surveyVals[attrKey] !== "undefined" ? surveyVals[attrKey] : 0;
 
-            html += `<div class="survey-group">`;
-            html += `<div class="survey-likert">`;
+            html += `<div class="survey-group"><div class="survey-likert">`;
             scale.forEach(v => {
                 const id = `${attrKey}_v${v}`;
                 html += `
@@ -672,13 +686,13 @@ function renderSurveySection(techKey) {
             });
             html += `</div></div>`;
         }
-
         html += `</div>`; // .viewer-section
     });
 
     html += `</form>`;
     return html;
 }
+
 
 
 

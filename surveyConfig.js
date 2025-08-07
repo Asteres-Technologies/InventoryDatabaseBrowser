@@ -62,15 +62,15 @@ window.surveyConfig = {
   "Operational Environment Flexibility": {
     definition: `This attribute measures how well a technology can function across different orbital and planetary environments, as well as under varying operational conditions. It reflects the adaptability and robustness of the technology when exposed to diverse settings, such as different gravity fields, radiation levels, thermal extremes, and mission profiles. For this attribute, we use a multiple choice categorical scale rather than a numerical scale to better capture the range of operational environments.<br>
     <b>Options:</b><br>
-    1: Low Earth Orbit (LEO); 2,000 km and below (ISS, most satellites)<br>
-    2: Medium Earth Orbit (MEO); 2,000–35,786 km; navigation satellites<br>
-    3: Geostationary Orbit (GEO); ~35,786 km; communications/weather satellites<br>
-    4: Highly Elliptical Orbit (HEO); high-eccentricity, specialized missions<br>
-    5: Cislunar Space; between Earth and Moon, incl. Lagrange points<br>
-    6: Lunar Orbit (LLO); orbits around the Moon<br>
-    7: Lunar Surface; surface operations on the Moon<br>
-    8: Deep Space; beyond Earth–Moon, interplanetary<br>
-    9: Other Celestial Bodies; asteroids, Mars, other planets
+    <b>1:</b> Low Earth Orbit (LEO); 2,000 km and below (ISS, most satellites)<br>
+    <b>2:</b> Medium Earth Orbit (MEO); 2,000–35,786 km; navigation satellites<br>
+    <b>3:</b> Geostationary Orbit (GEO); ~35,786 km; communications/weather satellites<br>
+    <b>4:</b> Highly Elliptical Orbit (HEO); high-eccentricity, specialized missions<br>
+    <b>5:</b> Cislunar Space; between Earth and Moon, incl. Lagrange points<br>
+    <b>6:</b> Lunar Orbit (LLO); orbits around the Moon<br>
+    <b>7:</b> Lunar Surface; surface operations on the Moon<br>
+    <b>8:</b> Deep Space; beyond Earth–Moon, interplanetary<br>
+    <b>9:</b> Other Celestial Bodies; asteroids, Mars, other planets
     `,
     categories: [
       "Low Earth Orbit (LEO); 2,000 km and below (ISS, most satellites)",
