@@ -89,6 +89,9 @@ This tool is maintained by and for members of the **COSMIC Consortium**.
 Special thanks to the following contributors for support on this project:
 - **Aimee Hubble** - COSMIC Consortium CME - _The Aerospace Corporation_
 - **Shannon Zirbel** - COSMIC Consortium CME - _The Aerospace Corporation_
+- **Alaan Franklin** - CEO - _Tactical Nexus Technologies_
+- **Mike Izenson** - Principal Engineer - _Creare_
+- **Henry Helvajian** - Technical Fellow | Principal Engineer - _The Aersospace Corporation_
 - **Hopefully More Soon!** - We welcome contributions from all COSMIC members.
 Feel free to open issues or pull requests for bug fixes and features.
 
