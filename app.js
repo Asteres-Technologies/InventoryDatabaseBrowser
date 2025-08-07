@@ -398,9 +398,13 @@ function createTechnologyCard(tech) {
         content += renderSurveySection(techKey);
         // Add action buttons:
         content += `
-            <button id="saveNotesSurveyBtn" class="btn btn--primary viewer-save-btn" style="margin-top:20px;">Save Notes & Survey</button>
-            <button id="exportSurveyBtn" class="btn btn--outline viewer-export-btn" style="margin-top:12px;">Export All Surveys/Notes</button>
+        <div class="viewer-button-row">
+            <button id="saveNotesSurveyBtn" class="btn btn--primary viewer-save-btn">Save Notes & Survey</button>
+            <button id="exportSurveyBtn" class="btn btn--outline viewer-export-btn">Export All Surveys/Notes</button>
+        </div>
         `;
+
+
         showSideViewer(content);
 
         // Attach event listeners:
@@ -518,32 +522,33 @@ function exportAllSurveyData() {
     }, 250);
 }
 
-
 function saveTechNotesAndSurvey(tech) {
     const techKey = tech['Technology Name'];
     // Save notes
     const area = document.getElementById('viewerNotesArea');
     if (area) techNotes[techKey] = area.value;
 
-    // Save survey answers
+    // Save survey
     const surveyForm = document.getElementById('surveyForm');
     if (surveyForm) {
         const formEls = surveyForm.elements;
         let vals = {};
         for (let el of formEls) {
-        if (el.type === 'radio' && el.checked) {
-            vals[el.name] = el.value;
-        }
+            // Save both select/radio styles by name
+            if ((el.type === 'radio' && el.checked) || el.tagName === "SELECT") {
+                vals[el.name] = el.value;
+            }
         }
         techSurveyResponses[techKey] = { ...techSurveyResponses[techKey], ...vals };
     }
-    // Show success message
+    // Same save button success message as before
     const saveBtn = document.getElementById('saveNotesBtn');
     if (saveBtn) {
         saveBtn.textContent = 'Saved!';
         setTimeout(() => { saveBtn.textContent = 'Save Notes & Survey'; }, 1200);
     }
 }
+
 
 
 function handleImportResultsSelect(e) {
@@ -614,34 +619,68 @@ function renderNotesSection(techKey) {
 }
 
 function renderSurveySection(techKey) {
-    console.log("Responses", techSurveyResponses);
     const surveyVals = techSurveyResponses[techKey] || {};
-    console.log("Rendering survey section for:", techKey, "with values:", surveyVals);
     let html = `<form id="surveyForm">`;
-    Object.entries(surveyConfig).forEach(([group, groupData]) => {
-        html += `<div class="viewer-section viewer-survey-section">
-        <div class="viewer-section-title">${escapeHtml(group)}</div>
-        <div style="font-size:0.98em;color:var(--color-text-secondary);margin-bottom:0.44em;">
-            ${escapeHtml(groupData.intro)}
-        </div>
-        `;
-        groupData.questions.forEach((q, qIdx) => {
-        const qKey = `${group}::${qIdx}`;
-        const savedVal = surveyVals[qKey] ?? '';
-        html += `<div class="survey-group">
-            <span class="survey-question-label">${escapeHtml(q)}</span>
-            <div class="survey-likert">`;
-        for (let i = 0; i < 6; ++i) {
-            html += `<input type="radio" name="${qKey}" id="${qKey}_v${i}" value="${i}" ${(savedVal == i ? 'checked' : '')}>
-                <label for="${qKey}_v${i}">${i}</label>`;
+
+    Object.entries(surveyConfig).forEach(([attrKey, attrObj]) => {
+        html += `<div class="viewer-section viewer-survey-section">`;
+
+        // Title
+        html += `<div class="viewer-section-title">${escapeHtml(attrKey)}</div>`;
+
+        // Definition & (optionally) scaleDescription, with correct escaping
+        if (attrKey === "Operational Environment Flexibility") {
+            // Show raw HTML for OEF only
+            html += `<div style="font-size:0.98em;color:var(--color-text-secondary);margin-bottom:0.44em;">${attrObj.definition || ''}</div>`;
+        } else {
+            // Escape everything else
+            html += `<div style="font-size:0.98em;color:var(--color-text-secondary);margin-bottom:0.44em;">${escapeHtml(attrObj.definition || '')}</div>`;
+            // If a scaleDescription exists, show it as HTML (not escaped)
+            if (attrObj.scaleDescription) {
+                html += `<div style="font-size:0.93em;color:var(--color-text-secondary);margin-bottom:0.9em;">${attrObj.scaleDescription}</div>`;
+            }
         }
-        html += `</div></div>`;
-        });
-        html += `</div>`;
+
+        // Survey Input UI
+        if (attrKey === "Operational Environment Flexibility" && attrObj.categories) {
+            // Categorical dropdown
+            const savedVal = surveyVals[attrKey] || "";
+            html += `<div class="survey-group">
+                        <span class="survey-question-label">Applicable Environment:</span>
+                        <select name="${attrKey}" style="font-size:1em;">
+                            <option value="">Not Graded</option>`;
+            attrObj.categories.forEach((cat, idx) => {
+                html += `<option value="${idx+1}" ${savedVal == (idx+1) ? "selected" : ""}>${(idx+1)} - ${escapeHtml(cat)}</option>`;
+            });
+            html += `   </select>
+                    </div>`;
+        } else {
+            // Numeric rating scale 0-10, as a row of radio buttons
+            const scale = attrObj.scaleValues || [0,1,2,3,4,5,6,7,8,9,10];
+            const savedVal = typeof surveyVals[attrKey] !== "undefined" ? surveyVals[attrKey] : 0;
+
+            html += `<div class="survey-group">`;
+            html += `<div class="survey-likert">`;
+            scale.forEach(v => {
+                const id = `${attrKey}_v${v}`;
+                html += `
+                    <div>
+                        <input type="radio" name="${attrKey}" id="${id}" value="${v}" ${savedVal == v ? "checked" : ""}>
+                        <label for="${id}">${v}</label>
+                    </div>
+                `;
+            });
+            html += `</div></div>`;
+        }
+
+        html += `</div>`; // .viewer-section
     });
+
     html += `</form>`;
     return html;
 }
+
+
 
 sideViewerCloseBtn.addEventListener('click', closeSideViewer);
 sideViewerOverlay.addEventListener('click', closeSideViewer);
