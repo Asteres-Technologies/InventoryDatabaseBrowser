@@ -4,6 +4,7 @@ let filteredData = [];
 let isDataLoaded = false;
 let listenersInitialized = false;
 let techNotes = {}; // { [techName]: noteString }
+let techSurveyJustifications = {}; // { [techName]: { [attrKey]: justificationText } }
 let techSurveyResponses = {}; // { [techName]: { questionKey: responseValue } }
 let surveyConfig = window.surveyConfig;
 
@@ -399,10 +400,10 @@ function createTechnologyCard(tech) {
         // Add action buttons:
         content += `
         <div class="viewer-button-row">
-            <button id="saveNotesSurveyBtn" class="btn btn--primary viewer-save-btn">Save Notes & Survey</button>
-            <button id="exportSurveyBtn" class="btn btn--outline viewer-export-btn">Export All Surveys/Notes</button>
+            <button id="saveTechBtn" class="btn btn--primary viewer-save-btn">Save Technology</button>
         </div>
         `;
+
 
 
         showSideViewer(content);
@@ -410,14 +411,15 @@ function createTechnologyCard(tech) {
         // Attach event listeners:
         setTimeout(() => {
             // Save button
-            const saveBtn = document.getElementById('saveNotesSurveyBtn');
+            const saveBtn = document.getElementById('saveTechBtn');
             if (saveBtn) {
-            saveBtn.addEventListener('click', function() {
-                saveTechNotesAndSurvey(tech);
-                saveBtn.textContent = 'Saved!';
-                setTimeout(() => { saveBtn.textContent = 'Save Notes & Survey'; }, 1200);
-            });
+                saveBtn.addEventListener('click', function() {
+                    saveTechNotesAndSurvey(tech);
+                    saveBtn.textContent = 'Saved!';
+                    setTimeout(() => { saveBtn.textContent = 'Save Technology'; }, 1200);
+                });
             }
+
             // Export
             const exportBtn = document.getElementById('exportSurveyBtn');
             if (exportBtn) {
@@ -497,16 +499,20 @@ function escapeHtml(text) {
 function exportAllSurveyData() {
     const techNotesExport = {};
     const techSurveyResponsesExport = {};
+    const techSurveyJustificationsExport = {};
 
+    // Export for all technologies that are in your technologyData array
     technologyData.forEach(tech => {
         const key = tech['Technology Name'];
         techNotesExport[key] = techNotes[key] || "";
         techSurveyResponsesExport[key] = techSurveyResponses[key] || {};
+        techSurveyJustificationsExport[key] = techSurveyJustifications[key] || {};
     });
 
     const result = {
         techNotes: techNotesExport,
-        techSurveyResponses: techSurveyResponsesExport
+        techSurveyResponses: techSurveyResponsesExport,
+        techSurveyJustifications: techSurveyJustificationsExport
     };
 
     const jsonBlob = new Blob([JSON.stringify(result, null, 2)], {type: "application/json"});
@@ -522,41 +528,48 @@ function exportAllSurveyData() {
     }, 250);
 }
 
+
 function saveTechNotesAndSurvey(tech) {
     const techKey = tech['Technology Name'];
     // Save notes
     const area = document.getElementById('viewerNotesArea');
     if (area) techNotes[techKey] = area.value;
 
-    // Save survey
+    // Save survey answers (as before)
     const surveyForm = document.getElementById('surveyForm');
     if (surveyForm) {
         const formEls = surveyForm.elements;
         let vals = {};
-
         for (let el of formEls) {
             if (el.type === 'radio' && el.checked) {
                 vals[el.name] = el.value;
             }
-            // Multi-select for Operational Environment Flexibility
             if (el.type === 'checkbox' && el.name === "Operational Environment Flexibility") {
                 if (!vals[el.name]) vals[el.name] = [];
                 if (el.checked) vals[el.name].push(el.value);
             }
-            if (el.tagName === "SELECT") {
+            if (el.tagName === 'SELECT') {
                 vals[el.name] = el.value;
             }
         }
         techSurveyResponses[techKey] = { ...techSurveyResponses[techKey], ...vals };
+
+        // ---- PER-ATTRIBUTE JUSTIFICATIONS ----
+        if (!techSurveyJustifications[techKey]) techSurveyJustifications[techKey] = {};
+        const textareas = surveyForm.querySelectorAll('textarea[name^="justification--"]');
+        textareas.forEach(function(tarea) {
+            const attrKey = tarea.name.replace('justification--', '');
+            techSurveyJustifications[techKey][attrKey] = tarea.value;
+        });
     }
-    const saveBtn = document.getElementById('saveNotesBtn');
+
+    // (Button feedback as before)
+    const saveBtn = document.getElementById('saveTechBtn');
     if (saveBtn) {
         saveBtn.textContent = 'Saved!';
-        setTimeout(() => { saveBtn.textContent = 'Save Notes & Survey'; }, 1200);
+        setTimeout(() => { saveBtn.textContent = 'Save Technology'; }, 1200);
     }
 }
-
-
 
 
 function handleImportResultsSelect(e) {
@@ -568,14 +581,14 @@ function handleImportResultsSelect(e) {
             const parsed = JSON.parse(event.target.result);
             console.log("Loaded parsed JSON:", parsed); 
             //Check for expected structure
-            if (!parsed.techNotes || !parsed.techSurveyResponses) {
-                console.error("Invalid import format. Expected 'techNotes' and 'techSurveyResponses' keys.");
-                alert("Invalid import format. Please ensure the file contains 'techNotes' and 'techSurveyResponses'.");
+            if (!parsed.techNotes || !parsed.techSurveyResponses || !parsed.techSurveyJustifications) {
+                console.error("Invalid import format. Expected 'techNotes', 'techSurveyResponses', and 'techSurveyJustifications' keys.");
+                alert("Invalid import format. Please ensure the file contains 'techNotes', 'techSurveyResponses', and 'techSurveyJustifications'.");
                 return;
             }
-            // Assign to correct variable!
             techNotes = parsed.techNotes || {};
             techSurveyResponses = parsed.techSurveyResponses || {};
+            techSurveyJustifications = parsed.techSurveyJustifications || {};
             displayResults();
         } catch (err) {
             console.error("Error parsing import JSON", err);
@@ -619,35 +632,37 @@ function renderTechDetails(tech) {
 
 function renderNotesSection(techKey) {
     const noteVal = techNotes[techKey] || '';
+    const placeholderText = "Provide one or two paragraphs of expert analysis and insights about the technology's significance, unique features, or challenges.";
     return `
-    <div class="viewer-section-title" style="margin-top:1.1em;">Notes</div>
-    <textarea id="viewerNotesArea" class="viewer-notes-area" placeholder="Your notes about this technology...">${escapeHtml(noteVal)}</textarea>
-    <button id="saveNotesBtn" class="btn btn--primary viewer-save-btn" style="margin-top:18px;">Save Notes</button>
+    <div class="viewer-section-title" style="margin-top:1.1em;">Expert Analysis</div>
+    <textarea id="viewerNotesArea" class="viewer-notes-area" placeholder="${placeholderText}">${escapeHtml(noteVal)}</textarea>
     `;
 }
 
 function renderSurveySection(techKey) {
     const surveyVals = techSurveyResponses[techKey] || {};
+    // Use this global variable for justifications (make sure it's defined in your app)
+    // let techSurveyJustifications = {}; // at top level
+
     let html = `<form id="surveyForm">`;
 
     Object.entries(surveyConfig).forEach(([attrKey, attrObj]) => {
         html += `<div class="viewer-section viewer-survey-section">`;
-        // ---- TITLE ----
+
+        // ---- Attribute Title ----
         html += `<div class="viewer-section-title">${escapeHtml(attrKey)}</div>`;
 
-        // ---- DEFINITION & SCALEDESCRIPTION ----
+        // ---- Definition and scaleDescription ----
         if (attrKey === "Operational Environment Flexibility") {
-            // Show definition as HTML (not escaped) for OEF
             html += `<div style="font-size:0.98em;color:var(--color-text-secondary);margin-bottom:0.44em;">${attrObj.definition || ''}</div>`;
         } else {
-            // Show escaped definition, and unescaped HTML scaleDescription if present
             html += `<div style="font-size:0.98em;color:var(--color-text-secondary);margin-bottom:0.44em;">${escapeHtml(attrObj.definition || '')}</div>`;
             if (attrObj.scaleDescription) {
                 html += `<div style="font-size:0.93em;color:var(--color-text-secondary);margin-bottom:0.9em;">${attrObj.scaleDescription}</div>`;
             }
         }
 
-        // ---- INPUT UI ----
+        // ---- Input controls ----
         if (attrKey === "Operational Environment Flexibility" && attrObj.categories) {
             // MULTI-SELECT CHECKBOXES
             let checkedVals = [];
@@ -670,10 +685,9 @@ function renderSurveySection(techKey) {
             });
             html += `</div></div>`;
         } else {
-            // NUMERIC RATING 0-10 RADIO BUTTONS
+            // NUMERIC RADIO ROW
             const scale = attrObj.scaleValues || [0,1,2,3,4,5,6,7,8,9,10];
             const savedVal = typeof surveyVals[attrKey] !== "undefined" ? surveyVals[attrKey] : 0;
-
             html += `<div class="survey-group"><div class="survey-likert">`;
             scale.forEach(v => {
                 const id = `${attrKey}_v${v}`;
@@ -686,15 +700,31 @@ function renderSurveySection(techKey) {
             });
             html += `</div></div>`;
         }
+
+        // ---- Justification box ----
+        const justification = (
+            techSurveyJustifications[techKey] &&
+            techSurveyJustifications[techKey][attrKey]
+        ) || '';
+        const justPlaceholder = "Short rationale for this score. What factors influenced your assessment?";
+        html += `
+            <div class="survey-justification">
+                <textarea
+                    class="survey-justification-area"
+                    name="justification--${attrKey}"
+                    placeholder="${justPlaceholder}"
+                    rows="2"
+                    style="width:100%;min-height:40px;margin-top:6px;resize:vertical;font-size:0.97em;"
+                >${escapeHtml(justification)}</textarea>
+            </div>
+        `;
+
         html += `</div>`; // .viewer-section
     });
 
     html += `</form>`;
     return html;
 }
-
-
-
 
 sideViewerCloseBtn.addEventListener('click', closeSideViewer);
 sideViewerOverlay.addEventListener('click', closeSideViewer);
