@@ -6,6 +6,7 @@ let listenersInitialized = false;
 let techNotes = {}; // { [techName]: noteString }
 let techSurveyJustifications = {}; // { [techName]: { [attrKey]: justificationText } }
 let techSurveyResponses = {}; // { [techName]: { questionKey: responseValue } }
+let techIgnored = {}; // { [techName]: true/false }
 let surveyConfig = window.surveyConfig;
 
 // --- Side Viewer element references ---
@@ -58,6 +59,7 @@ const importResultsFile = document.getElementById('importResultsFile');
 
 
 // Filter elements
+
 const keywordSearch = document.getElementById('keywordSearch');
 const levelOneFilter = document.getElementById('levelOneFilter');
 const levelTwoFilter = document.getElementById('levelTwoFilter');
@@ -67,6 +69,65 @@ const functionalTwoFilter = document.getElementById('functionalTwoFilter');
 const trlFilter = document.getElementById('trlFilter');
 const existingTechFilter = document.getElementById('existingTechFilter');
 const clearFilters = document.getElementById('clearFilters');
+
+// Add slide toggle for surveyed technologies
+let surveyedToggle = document.getElementById('surveyedToggle');
+if (!surveyedToggle) {
+    // Create a container div instead of a label
+    surveyedToggle = document.createElement('div');
+    surveyedToggle.className = 'surveyed-toggle-switch';
+    surveyedToggle.style.display = 'inline-flex';
+    surveyedToggle.style.alignItems = 'center';
+    surveyedToggle.style.marginLeft = '1em';
+    surveyedToggle.innerHTML = `
+        <input type="checkbox" id="surveyedToggleInput" style="display:none;">
+        <span class="slider-switch" tabindex="0" style="cursor: pointer;"></span>
+        <label for="surveyedToggleInput" style="margin-left:0.7em;vertical-align:middle;cursor:pointer;">Show surveyed technologies</label>
+    `;
+    // Insert after existingTechFilter
+    if (existingTechFilter && existingTechFilter.parentNode) {
+        existingTechFilter.parentNode.insertBefore(surveyedToggle, existingTechFilter.nextSibling);
+    } else {
+        controlsSection.appendChild(surveyedToggle);
+    }
+}
+
+const surveyedToggleInput = document.getElementById('surveyedToggleInput');
+const sliderSwitch = surveyedToggle.querySelector('.slider-switch');
+
+if (sliderSwitch && surveyedToggleInput) {
+    // Always update visual state to match checkbox
+    function updateSliderVisual() {
+        if (surveyedToggleInput.checked) {
+            sliderSwitch.classList.add('on');
+        } else {
+            sliderSwitch.classList.remove('on');
+        }
+    }
+    // Single function to handle toggle
+    function toggleSwitch() {
+        surveyedToggleInput.checked = !surveyedToggleInput.checked;
+        updateSliderVisual();
+        applyFilters();
+    }
+    // Keyboard accessibility
+    sliderSwitch.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault();
+            toggleSwitch();
+        }
+    });
+    // Click handler for the slider switch
+    sliderSwitch.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleSwitch();
+    });
+    // The label will handle clicks on the text naturally
+    // No additional event listener needed for the text
+    // Sync visual state on load
+    updateSliderVisual();
+}
 
 
 // Initialize the application
@@ -120,6 +181,18 @@ function setupEventListeners() {
     trlFilter.addEventListener('change', applyFilters);
     existingTechFilter.addEventListener('change', applyFilters);
     clearFilters.addEventListener('click', clearAllFilters);
+    if (surveyedToggleInput && sliderSwitch) {
+        surveyedToggleInput.addEventListener('change', () => {
+            if (sliderSwitch) {
+                if (surveyedToggleInput.checked) {
+                    sliderSwitch.classList.add('on');
+                } else {
+                    sliderSwitch.classList.remove('on');
+                }
+            }
+            applyFilters();
+        });
+    }
 	
 	let chooseFileButton = document.querySelector('.btn--primary');
 	chooseFileButton.addEventListener('click', (e) => {
@@ -280,7 +353,13 @@ function applyFilters() {
     const trl = trlFilter.value;
     const existingTech = existingTechFilter.value;
 
+    const showSurveyedOnly = surveyedToggleInput && surveyedToggleInput.checked;
     filteredData = technologyData.filter(item => {
+        // Show only surveyed if toggle is on
+        if (showSurveyedOnly) {
+            const survey = techSurveyResponses[item['Technology Name']];
+            if (!survey || Object.keys(survey).length === 0) return false;
+        }
         // Keyword search across multiple fields
         if (keyword) {
             const searchText = [
@@ -354,10 +433,81 @@ function createTechnologyCard(tech) {
         nameOnly = match[2];
     }
 
+    // --- Survey status icon logic ---
+    let surveyStatus = 'none';
+    const techKey = tech['Technology Name'];
+    const surveyResp = techSurveyResponses[techKey];
+    const surveyJust = techSurveyJustifications[techKey];
+    const expertNotes = techNotes[techKey];
+    const isIgnored = techIgnored[techKey];
+
+    // Check survey status
+    if (surveyResp && Object.keys(surveyResp).length > 0) {
+        // Check if all required survey fields, justifications, and expert analysis are filled
+        let allFilled = true;
+        for (const key of Object.keys(surveyConfig)) {
+            // Check survey response
+            const resp = surveyResp[key];
+            if (typeof resp === 'undefined' || resp === '' || (Array.isArray(resp) && resp.length === 0)) {
+                allFilled = false;
+                break;
+            }
+            // Check justification
+            if (!surveyJust || typeof surveyJust[key] === 'undefined' || surveyJust[key].trim() === '') {
+                allFilled = false;
+                break;
+            }
+        }
+        // ALSO CHECK EXPERT ANALYSIS NOTES
+        if (allFilled) {
+            if (!expertNotes || expertNotes.trim() === '') {
+                allFilled = false;
+            }
+        }
+        surveyStatus = allFilled ? 'done' : 'pending';
+    }
+
+    // Create status icon - priority: done > pending > ignored > ignore button
+    let statusIcon = '';
+    if (surveyStatus === 'done') {
+        // Green checkmark - highest priority
+        statusIcon = `<span class="card-status-icon card-status-done" title="Survey complete" style="position:absolute;top:12px;right:12px;z-index:2;width:24px;height:24px;display:inline-block;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" style="display:block;">
+                <circle cx="12" cy="12" r="10" fill="#c2d857" stroke="#c2d857" stroke-width="1"/>
+                <path d="M9 12l2 2 4-4" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </span>`;
+    } else if (surveyStatus === 'pending') {
+        // Orange clock - second priority
+        statusIcon = `<span class="card-status-icon card-status-pending" title="Survey pending" style="position:absolute;top:12px;right:12px;z-index:2;width:24px;height:24px;display:inline-block;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" style="display:block;">
+                <circle cx="12" cy="12" r="10" fill="#f59e0b" stroke="#f59e0b" stroke-width="1"/>
+                <path d="M12 6v6l4 2" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </span>`;
+    } else if (isIgnored) {
+        // Red X for ignored - third priority
+        statusIcon = `<span class="card-status-icon card-status-ignored" title="Technology ignored - click to unignore" style="position:absolute;top:12px;right:12px;z-index:2;width:24px;height:24px;display:inline-block;cursor:pointer;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" style="display:block;">
+                <circle cx="12" cy="12" r="10" fill="#ef4444" stroke="#dc2626" stroke-width="1"/>
+                <path d="M15 9l-6 6M9 9l6 6" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </span>`;
+    } else {
+        // Gray X for ignore option - lowest priority (only shows when no other status)
+        statusIcon = `<span class="card-ignore-btn" title="Ignore technology" style="position:absolute;top:12px;right:12px;z-index:2;width:24px;height:24px;display:inline-block;cursor:pointer;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" style="display:block;">
+                <circle cx="12" cy="12" r="10" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1"/>
+                <path d="M15 9l-6 6M9 9l6 6" stroke="#6b7280" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </span>`;
+    }
+
     // Build HTML
     card.innerHTML = `
+        ${statusIcon}
         <div class="card-header">
-            <h3 class="technology-name">${escapeHtml(nameOnly)}${idx !== '' ? ` <span style=\"color:#aaa;font-weight:normal;font-size:0.95em;\">(${idx})</span>` : ''}</h3>
+            <h3 class="technology-name">${escapeHtml(nameOnly)}${idx !== '' ? ` <span style="color:#aaa;font-weight:normal;font-size:0.95em;">(${idx})</span>` : ''}</h3>
             <p class="tech-producer">${escapeHtml(tech['Tech Producer'] || 'Unknown Producer')}</p>
         </div>
         <div class="card-description">
@@ -400,13 +550,41 @@ function createTechnologyCard(tech) {
     if (truncated) {
         const shortElem = card.querySelector('.desc-short');
         const fullElem = card.querySelector('.desc-full');
-        shortElem.querySelector('.desc-toggle.more-btn').addEventListener('click', () => {
+        const moreBtn = shortElem.querySelector('.desc-toggle.more-btn');
+        const lessBtn = fullElem.querySelector('.desc-toggle.less-btn');
+
+        moreBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
             shortElem.style.display = 'none';
             fullElem.style.display = '';
         });
-        fullElem.querySelector('.desc-toggle.less-btn').addEventListener('click', () => {
+
+        lessBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
             fullElem.style.display = 'none';
             shortElem.style.display = '';
+        });
+    }
+
+    // Add ignore/unignore button event listeners
+    const ignoreBtn = card.querySelector('.card-ignore-btn');
+    const ignoredIcon = card.querySelector('.card-status-ignored');
+    
+    if (ignoreBtn) {
+        // Gray X button - click to ignore
+        ignoreBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            techIgnored[techKey] = true;
+            displayResults();
+        });
+    }
+    
+    if (ignoredIcon) {
+        // Red X icon - click to unignore
+        ignoredIcon.addEventListener('click', function(e) {
+            e.stopPropagation();
+            techIgnored[techKey] = false;
+            displayResults();
         });
     }
 
@@ -438,6 +616,26 @@ function createTechnologyCard(tech) {
                 });
             }
 
+            // Ignore button
+            const ignoreBtn = document.getElementById('ignoreTechBtn');
+            if (ignoreBtn) {
+                ignoreBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const techKey = tech['Technology Name'];
+                    techIgnored[techKey] = !techIgnored[techKey];
+                    // Update button text and style
+                    if (techIgnored[techKey]) {
+                        ignoreBtn.textContent = 'Unignore Technology';
+                        ignoreBtn.className = 'btn btn--secondary viewer-ignore-btn';
+                    } else {
+                        ignoreBtn.textContent = 'Ignore Technology';
+                        ignoreBtn.className = 'btn btn--danger viewer-ignore-btn';
+                    }
+                    // Refresh display to update status icon
+                    displayResults();
+                });
+            }
+
             // Export
             const exportBtn = document.getElementById('exportSurveyBtn');
             if (exportBtn) {
@@ -463,6 +661,7 @@ function createTechnologyCard(tech) {
 
     return card;
 }
+
 
 function updateResultsCount() {
     const count = filteredData.length;
@@ -519,19 +718,21 @@ function exportAllSurveyData() {
     const notesExport = {};
     const surveyResponsesExport = {};
     const surveyJustificationsExport = {};
+    const ignoredExport = {};
 
     technologyData.forEach((tech) => {
         const techName = tech['Technology Name'] || 'Unnamed';
-        const techProducer = tech['Tech Producer'] || 'UnknownProducer';
-        const key = `${techName}__${techProducer}`;
+        const key = techName;
         const hasNotes = techNotes[techName] && techNotes[techName].trim() !== "";
         const hasSurvey = techSurveyResponses[techName] && Object.keys(techSurveyResponses[techName]).length > 0;
         const hasJustifications = techSurveyJustifications[techName] && Object.keys(techSurveyJustifications[techName]).length > 0;
-        if (hasNotes || hasSurvey || hasJustifications) {
+        const isIgnored = techIgnored[techName];
+        if (hasNotes || hasSurvey || hasJustifications || isIgnored) {
             technologiesExport[key] = tech;
             if (hasNotes) notesExport[key] = techNotes[techName];
             if (hasSurvey) surveyResponsesExport[key] = techSurveyResponses[techName];
             if (hasJustifications) surveyJustificationsExport[key] = techSurveyJustifications[techName];
+            if (isIgnored) ignoredExport[key] = techIgnored[techName];
         }
     });
 
@@ -539,7 +740,8 @@ function exportAllSurveyData() {
         technologies: technologiesExport,
         notes: notesExport,
         surveyResponses: surveyResponsesExport,
-        surveyJustifications: surveyJustificationsExport
+        surveyJustifications: surveyJustificationsExport,
+        ignored: ignoredExport
     };
 
     const jsonBlob = new Blob([JSON.stringify(result, null, 2)], {type: "application/json"});
@@ -594,30 +796,43 @@ function saveTechNotesAndSurvey(tech) {
     const saveBtn = document.getElementById('saveTechBtn');
     if (saveBtn) {
         saveBtn.textContent = 'Saved!';
-        setTimeout(() => { saveBtn.textContent = 'Save Technology'; }, 1200);
+        setTimeout(() => {
+            saveBtn.textContent = 'Save Technology';
+        }, 800);
     }
+    // Always refresh results to update status icons, but do NOT close the side viewer
+    displayResults();
 }
 
 
 function handleImportResultsSelect(e) {
     console.log("IMPORT handler called"); 
     const file = e.target.files[0];
+    showUploadStatus('Loading results...', 'loading');
+    showLoading(true);
     const reader = new FileReader();
     reader.onload = function(event) {
         try {
             const parsed = JSON.parse(event.target.result);
             console.log("Loaded parsed JSON:", parsed); 
-            //Check for expected structure
-            if (!parsed.techNotes || !parsed.techSurveyResponses || !parsed.techSurveyJustifications) {
-                console.error("Invalid import format. Expected 'techNotes', 'techSurveyResponses', and 'techSurveyJustifications' keys.");
-                alert("Invalid import format. Please ensure the file contains 'techNotes', 'techSurveyResponses', and 'techSurveyJustifications'.");
+            // Check for expected structure (new format)
+            if (!parsed.notes || !parsed.surveyResponses || !parsed.surveyJustifications) {
+                showUploadStatus("Invalid import format. Please ensure the file contains 'notes', 'surveyResponses', and 'surveyJustifications'.", 'error');
+                showLoading(false);
+                console.error("Invalid import format. Expected 'notes', 'surveyResponses', and 'surveyJustifications' keys.");
+                alert("Invalid import format. Please ensure the file contains 'notes', 'surveyResponses', and 'surveyJustifications'.");
                 return;
             }
-            techNotes = parsed.techNotes || {};
-            techSurveyResponses = parsed.techSurveyResponses || {};
-            techSurveyJustifications = parsed.techSurveyJustifications || {};
+            techNotes = parsed.notes || {};
+            techSurveyResponses = parsed.surveyResponses || {};
+            techSurveyJustifications = parsed.surveyJustifications || {};
+            techIgnored = parsed.ignored || {};
             displayResults();
+            showUploadStatus('Results loaded!', 'success');
+            showLoading(false);
         } catch (err) {
+            showUploadStatus('Error loading results. Please check the file format.', 'error');
+            showLoading(false);
             console.error("Error parsing import JSON", err);
         }
     }

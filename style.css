@@ -1,3 +1,72 @@
+/* Card status icons for survey completion */
+.card-status-icon.card-status-done svg path {
+  fill: var(--color-COSMIC-green, #c2d857) !important;
+}
+.card-status-icon.card-status-pending svg path {
+  fill: var(--color-orange-400, #e6a161) !important;
+}
+.surveyed-toggle-switch {
+  position: relative;
+}
+.surveyed-toggle-switch .slider-switch {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 24px;
+  background: #ccc;
+  border-radius: 24px;
+  vertical-align: middle;
+  transition: background 0.2s;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+  z-index: 2;
+  pointer-events: all;
+}
+.surveyed-toggle-switch span:last-child {
+  pointer-events: none;
+}
+/* Modern slider switch for surveyed toggle */
+.surveyed-toggle-switch .slider-switch {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 24px;
+  background: #ccc;
+  border-radius: 24px;
+  vertical-align: middle;
+  transition: background 0.2s;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+  z-index: 1;
+  pointer-events: all;
+}
+.surveyed-toggle-switch .slider-switch {
+  /* Make the entire switch area clickable */
+  pointer-events: auto;
+}
+.surveyed-toggle-switch .slider-switch:before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  pointer-events: all;
+}
+.surveyed-toggle-switch .slider-switch.on {
+  background: var(--color-COSMIC-green);
+}
+.surveyed-toggle-switch .slider-switch.on:before {
+  transform: translateX(18px);
+}
+.surveyed-toggle-switch .slider-switch {
+  box-shadow: 0 0 2px #aaa;
+}
 :root {
   /* Primitive Color Tokens */
   --color-white: rgba(255, 255, 255, 1);
