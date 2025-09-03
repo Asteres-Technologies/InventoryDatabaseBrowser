@@ -76,7 +76,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function loadSampleData() {
-    technologyData = [...sampleData];
+    technologyData = sampleData.map((tech, idx) => {
+        return {
+            ...tech,
+            'Technology Name': `${idx}__${tech['Technology Name'] || 'Unnamed'}`
+        };
+    });
     filteredData = [...technologyData];
     isDataLoaded = true;
     
@@ -185,7 +190,12 @@ function processFile(file) {
                 return;
             }
 
-            technologyData = jsonData;
+            technologyData = jsonData.map((tech, idx) => {
+                return {
+                    ...tech,
+                    'Technology Name': `${idx}__${tech['Technology Name'] || 'Unnamed'}`
+                };
+            });
             filteredData = [...technologyData];
             isDataLoaded = true;
             
@@ -334,10 +344,20 @@ function createTechnologyCard(tech) {
         ? fullDescription.slice(0, 144) + "…"
         : fullDescription;
 
+    // Extract index and name from Technology Name
+    let displayName = tech['Technology Name'] || 'Unnamed Technology';
+    let idx = '';
+    let nameOnly = displayName;
+    const match = displayName.match(/^(\d+)__(.+)$/);
+    if (match) {
+        idx = match[1];
+        nameOnly = match[2];
+    }
+
     // Build HTML
     card.innerHTML = `
         <div class="card-header">
-            <h3 class="technology-name">${escapeHtml(tech['Technology Name'] || 'Unnamed Technology')}</h3>
+            <h3 class="technology-name">${escapeHtml(nameOnly)}${idx !== '' ? ` <span style=\"color:#aaa;font-weight:normal;font-size:0.95em;\">(${idx})</span>` : ''}</h3>
             <p class="tech-producer">${escapeHtml(tech['Tech Producer'] || 'Unknown Producer')}</p>
         </div>
         <div class="card-description">
@@ -395,16 +415,14 @@ function createTechnologyCard(tech) {
         const techKey = tech['Technology Name'];
         let content = '';
         content += renderTechDetails(tech);
-        content += renderNotesSection(techKey);
         content += renderSurveySection(techKey);
+        content += renderNotesSection(techKey);
         // Add action buttons:
         content += `
         <div class="viewer-button-row">
             <button id="saveTechBtn" class="btn btn--primary viewer-save-btn">Save Technology</button>
         </div>
         `;
-
-
 
         showSideViewer(content);
 
@@ -423,22 +441,22 @@ function createTechnologyCard(tech) {
             // Export
             const exportBtn = document.getElementById('exportSurveyBtn');
             if (exportBtn) {
-            exportBtn.addEventListener('click', exportAllSurveyData);
+                exportBtn.addEventListener('click', exportAllSurveyData);
             }
 
             // Notes: update the in-memory state as you type (for instant recall if you switch cards)
             const notesArea = document.getElementById('viewerNotesArea');
             if (notesArea) {
-            notesArea.addEventListener('input', () => {
-                techNotes[techKey] = notesArea.value;
-            });
+                notesArea.addEventListener('input', () => {
+                    techNotes[techKey] = notesArea.value;
+                });
             }
             // Survey: update in-memory as soon as you select any radio
             const surveyForm = document.getElementById('surveyForm');
             if (surveyForm) {
-            surveyForm.addEventListener('change', () => {
-                saveTechNotesAndSurvey(tech); // Autosave on any change (optional, or just update in-memory state here)
-            });
+                surveyForm.addEventListener('change', () => {
+                    saveTechNotesAndSurvey(tech); // Autosave on any change (optional, or just update in-memory state here)
+                });
             }
         }, 0);
     });
@@ -497,22 +515,31 @@ function escapeHtml(text) {
 }
 
 function exportAllSurveyData() {
-    const techNotesExport = {};
-    const techSurveyResponsesExport = {};
-    const techSurveyJustificationsExport = {};
+    const technologiesExport = {};
+    const notesExport = {};
+    const surveyResponsesExport = {};
+    const surveyJustificationsExport = {};
 
-    // Export for all technologies that are in your technologyData array
-    technologyData.forEach(tech => {
-        const key = tech['Technology Name'];
-        techNotesExport[key] = techNotes[key] || "";
-        techSurveyResponsesExport[key] = techSurveyResponses[key] || {};
-        techSurveyJustificationsExport[key] = techSurveyJustifications[key] || {};
+    technologyData.forEach((tech) => {
+        const techName = tech['Technology Name'] || 'Unnamed';
+        const techProducer = tech['Tech Producer'] || 'UnknownProducer';
+        const key = `${techName}__${techProducer}`;
+        const hasNotes = techNotes[techName] && techNotes[techName].trim() !== "";
+        const hasSurvey = techSurveyResponses[techName] && Object.keys(techSurveyResponses[techName]).length > 0;
+        const hasJustifications = techSurveyJustifications[techName] && Object.keys(techSurveyJustifications[techName]).length > 0;
+        if (hasNotes || hasSurvey || hasJustifications) {
+            technologiesExport[key] = tech;
+            if (hasNotes) notesExport[key] = techNotes[techName];
+            if (hasSurvey) surveyResponsesExport[key] = techSurveyResponses[techName];
+            if (hasJustifications) surveyJustificationsExport[key] = techSurveyJustifications[techName];
+        }
     });
 
     const result = {
-        techNotes: techNotesExport,
-        techSurveyResponses: techSurveyResponsesExport,
-        techSurveyJustifications: techSurveyJustificationsExport
+        technologies: technologiesExport,
+        notes: notesExport,
+        surveyResponses: surveyResponsesExport,
+        surveyJustifications: surveyJustificationsExport
     };
 
     const jsonBlob = new Blob([JSON.stringify(result, null, 2)], {type: "application/json"});
